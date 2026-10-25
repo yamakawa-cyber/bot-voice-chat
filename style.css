@@ -1,0 +1,16 @@
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#fff6fa;color:#333}
+header{position:sticky;top:0;display:flex;align-items:center;gap:8px;padding:6px 8px;background:#ff7eb6;color:#fff}
+h1{flex:1;font-size:18px;margin:0}.hdr{background:none;border:0;color:#fff;font-size:24px}
+#counter{font-size:14px;background:#fff3;padding:4px 8px;border-radius:12px}
+button,select,input{min-height:44px;min-width:44px;font-size:16px;border-radius:10px}
+button{border:0;background:#ffd1e6;padding:0 14px}main{padding:10px}
+#bots{list-style:none;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#bots button{width:100%;min-height:72px;background:#fff;box-shadow:0 1px 4px #0002;text-align:left}
+#bots small{display:block;color:#888;font-size:12px}
+#log{min-height:50vh;max-height:58vh;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.m{padding:8px 12px;border-radius:14px;max-width:85%;white-space:pre-wrap}.u{align-self:flex-end;background:#d7ecff}.b{background:#fff;box-shadow:0 1px 3px #0002}
+.row{display:flex;gap:8px;margin-top:8px;align-items:center}.row input{flex:1}
+.big{flex:1;min-height:56px;font-size:18px;background:#ff7eb6;color:#fff}.big.on{background:#e0245e}
+.tog{display:flex;align-items:center;gap:4px;min-height:44px}.tog input{width:28px;height:28px;min-height:0}
+#status{color:#888;font-size:14px;min-height:20px}
+#settings label{display:block;margin:10px 0}#settings input,#settings select{width:100%}.note{font-size:13px;color:#777}
