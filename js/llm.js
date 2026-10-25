@@ -1,6 +1,6 @@
 // LLMアダプタ: stream(provider, {key,model,base}, system, messages, onDelta, signal)
 const LLM={
- defaults:{gemini:'gemini-2.5-flash',openai:'gpt-4o-mini',xai:'grok-3-mini',custom:''},
+ defaults:{gemini:'gemini-flash-latest',openai:'gpt-4o-mini',xai:'grok-3-mini',custom:''},
  bases:{openai:'https://api.openai.com/v1',xai:'https://api.x.ai/v1'},
  async *sse(res){const rd=res.body.getReader(),dec=new TextDecoder();let buf='';
   for(;;){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});
@@ -10,16 +10,22 @@ const LLM={
   if(p==='mock')return this.mock(msgs,onDelta,signal);
   if(!cfg.key)throw new Error('APIキーが未設定です（⚙設定）');
   let res;
-  if(p==='gemini'){const m=cfg.model||this.defaults.gemini;
-   res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:streamGenerateContent?alt=sse`,{method:'POST',signal,
+  if(p==='gemini'){let m=cfg.model||localStorage.vc_gem_auto||this.defaults.gemini;
+   const call=(m,think)=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:streamGenerateContent?alt=sse`,{method:'POST',signal,
     headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},
-    body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:msgs.map(x=>({role:x.role==='user'?'user':'model',parts:[{text:x.content}]})),generationConfig:{maxOutputTokens:300,temperature:0.9,thinkingConfig:{thinkingBudget:0}}})});
-   await this.chk(res);for await(const j of this.sse(res)){const t=j.candidates?.[0]?.content?.parts?.map(x=>x.text||'').join('');if(t)onDelta(t)}
+    body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:msgs.map(x=>({role:x.role==='user'?'user':'model',parts:[{text:x.content}]})),generationConfig:Object.assign({maxOutputTokens:400,temperature:0.9},think?{thinkingConfig:{thinkingBudget:0}}:{})})});
+   res=await call(m,false);
+   if(res.status===404&&!cfg.model){const nm=await this.pickGemini(cfg.key);if(nm){m=nm;localStorage.vc_gem_auto=nm;res=await call(m,false)}}
+   await this.chk(res);for await(const j of this.sse(res)){const t=j.candidates?.[0]?.content?.parts?.filter(x=>!x.thought).map(x=>x.text||'').join('');if(t)onDelta(t)}
   }else{const base=(p==='custom'?cfg.base:this.bases[p]).replace(/\/$/,'');
    res=await fetch(base+'/chat/completions',{method:'POST',signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
     body:JSON.stringify({model:cfg.model||this.defaults[p],stream:true,max_tokens:300,messages:[{role:'system',content:system},...msgs]})});
    await this.chk(res);for await(const j of this.sse(res)){const t=j.choices?.[0]?.delta?.content;if(t)onDelta(t)}}
  },
+ async pickGemini(key){try{const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',{headers:{'x-goog-api-key':key}});if(!r.ok)return null;
+  const ms=((await r.json()).models||[]).filter(x=>(x.supportedGenerationMethods||[]).includes('generateContent')).map(x=>x.name.replace('models/',''));
+  const bad=/tts|image|live|embed|transcribe|vision|banana|audio/;const ok=ms.filter(n=>!bad.test(n));
+  return ok.find(n=>/flash-latest/.test(n))||ok.find(n=>/flash/.test(n)&&!/lite|preview|exp/.test(n))||ok.find(n=>/flash/.test(n))||ok[0]||null}catch(e){return null}},
  async chk(r){if(!r.ok){let t='';try{t=(await r.text()).slice(0,200)}catch(e){}throw new Error('AIエラー '+r.status+' '+t)}},
  async mock(msgs,onDelta,signal){const s='はい、聞こえてますよ！これはテスト用の返事です。「'+msgs.at(-1).content.slice(0,20)+'」ですね。';
   for(const ch of s.match(/.{1,4}/gu)){if(signal?.aborted)throw new DOMException('abort','AbortError');await new Promise(r=>setTimeout(r,40));onDelta(ch)}}
