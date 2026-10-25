@@ -15,6 +15,8 @@ const LLM={
     headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},
     body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:msgs.map(x=>({role:x.role==='user'?'user':'model',parts:[{text:x.content}]})),generationConfig:Object.assign({maxOutputTokens:400,temperature:0.9},think?{thinkingConfig:{thinkingBudget:0}}:{})})});
    res=await call(m,false);
+   for(let i=0;i<2&&[429,500,503].includes(res.status);i++){await new Promise(r=>setTimeout(r,800*(i+1)));res=await call(m,false)}
+   if([429,500,503].includes(res.status)){for(const fb of ['gemini-3.8-flash-lite','gemini-flash-latest','gemini-flash-lite-latest'].filter(x=>x!==m)){const r2=await call(fb,false);if(r2.ok){res=r2;break}}}
    if(res.status===404){const nm=await this.pickGemini(cfg.key);if(nm){m=nm;localStorage.vc_gem_auto=nm;res=await call(m,false)}}
    await this.chk(res);for await(const j of this.sse(res)){const t=j.candidates?.[0]?.content?.parts?.filter(x=>!x.thought).map(x=>x.text||'').join('');if(t)onDelta(t)}
   }else{const base=(p==='custom'?cfg.base:this.bases[p]).replace(/\/$/,'');
@@ -26,7 +28,7 @@ const LLM={
   const ms=((await r.json()).models||[]).filter(x=>(x.supportedGenerationMethods||[]).includes('generateContent')).map(x=>x.name.replace('models/',''));
   const bad=/tts|image|live|embed|transcribe|vision|banana|audio/;const ok=ms.filter(n=>!bad.test(n));
   return ok.find(n=>/flash-latest/.test(n))||ok.find(n=>/flash/.test(n)&&!/lite|preview|exp/.test(n))||ok.find(n=>/flash/.test(n))||ok[0]||null}catch(e){return null}},
- async chk(r){if(!r.ok){let t='';try{t=(await r.text()).slice(0,200)}catch(e){}throw new Error('AIエラー '+r.status+' '+t)}},
+ async chk(r){if(!r.ok){let t='';try{t=(await r.text()).slice(0,200)}catch(e){}throw new Error(r.status===503||r.status===429?'AIが混み合っています（'+r.status+'）。少し待ってもう一度話しかけてください':'AIエラー '+r.status+' '+t)}},
  async mock(msgs,onDelta,signal){const s='はい、聞こえてますよ！これはテスト用の返事です。「'+msgs.at(-1).content.slice(0,20)+'」ですね。';
   for(const ch of s.match(/.{1,4}/gu)){if(signal?.aborted)throw new DOMException('abort','AbortError');await new Promise(r=>setTimeout(r,40));onDelta(ch)}}
 };
