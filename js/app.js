@@ -27,6 +27,7 @@ async function send(text){text=text.trim();if(!text||busy)return;const c=cfg();
    if(first){first=false;$('#status').textContent='話してます（'+((performance.now()-t0)/1000).toFixed(1)+'秒）'}
    full+=d;buf+=d;el.textContent=full;$('#log').scrollTop=1e9;
    const r=splitSentences(buf);buf=r.rest;r.out.forEach(s=>TTS.enqueue(clean(s),bot.voice))},ctrl.signal);
+  if(!full.trim())throw new Error('返事が空でした（v7）。もう一度話しかけてみてください');
   if(buf.trim())TTS.enqueue(clean(buf),bot.voice);
   h.push({role:'assistant',content:full});saveHist(bot.id,h);
   TTS.chain.then(()=>{if(!busy&&$('#cont').checked&&!$('#chat').hidden)startRec()});

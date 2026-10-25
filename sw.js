@@ -1,4 +1,4 @@
-const V='vc-v6';const A=['./','index.html','style.css','manifest.webmanifest','icon.svg','js/app.js?v=6','js/llm.js?v=6','js/tts.js?v=6','personas/index.json'];
+const V='vc-v7';const A=['./','index.html','style.css','manifest.webmanifest','icon.svg','js/app.js?v=7','js/llm.js?v=7','js/tts.js?v=7','personas/index.json'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(A)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))));self.clients.claim()});
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==location.origin)return; // APIには触れない
