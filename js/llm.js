@@ -1,6 +1,6 @@
 // LLMアダプタ: stream(provider, {key,model,base}, system, messages, onDelta, signal)
 const LLM={
- defaults:{gemini:'gemini-flash-latest',openai:'gpt-4o-mini',xai:'grok-3-mini',custom:''},
+ defaults:{gemini:'gemini-3.8-flash',openai:'gpt-4o-mini',xai:'grok-3-mini',custom:''},
  bases:{openai:'https://api.openai.com/v1',xai:'https://api.x.ai/v1'},
  async *sse(res){const rd=res.body.getReader(),dec=new TextDecoder();let buf='';
   for(;;){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});
@@ -15,7 +15,7 @@ const LLM={
     headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},
     body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:msgs.map(x=>({role:x.role==='user'?'user':'model',parts:[{text:x.content}]})),generationConfig:Object.assign({maxOutputTokens:400,temperature:0.9},think?{thinkingConfig:{thinkingBudget:0}}:{})})});
    res=await call(m,false);
-   if(res.status===404&&!cfg.model){const nm=await this.pickGemini(cfg.key);if(nm){m=nm;localStorage.vc_gem_auto=nm;res=await call(m,false)}}
+   if(res.status===404){const nm=await this.pickGemini(cfg.key);if(nm){m=nm;localStorage.vc_gem_auto=nm;res=await call(m,false)}}
    await this.chk(res);for await(const j of this.sse(res)){const t=j.candidates?.[0]?.content?.parts?.filter(x=>!x.thought).map(x=>x.text||'').join('');if(t)onDelta(t)}
   }else{const base=(p==='custom'?cfg.base:this.bases[p]).replace(/\/$/,'');
    res=await fetch(base+'/chat/completions',{method:'POST',signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
