@@ -5,7 +5,7 @@ const LLM={
  async *sse(res){const rd=res.body.getReader(),dec=new TextDecoder();let buf='';
   for(;;){const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});
    let i;while((i=buf.indexOf('\n'))>=0){const l=buf.slice(0,i).trim();buf=buf.slice(i+1);
-    if(l.startsWith('data:')){const d=l.slice(5).trim();if(d==='[DONE]')return;try{yield JSON.parse(d)}catch(e){}}}}},
+    if(l.trim().startsWith('data:')){const d=l.trim().slice(5).trim();if(d==='[DONE]')return;try{yield JSON.parse(d)}catch(e){}}}}},
  async stream(p,cfg,system,msgs,onDelta,signal){
   if(p==='mock')return this.mock(msgs,onDelta,signal);
   if(!cfg.key)throw new Error('APIキーが未設定です（⚙設定）');
@@ -13,7 +13,7 @@ const LLM={
   if(p==='gemini'){let m=cfg.model||localStorage.vc_gem_auto||this.defaults.gemini;
    const call=(m,think)=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:streamGenerateContent?alt=sse`,{method:'POST',signal,
     headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},
-    body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:msgs.map(x=>({role:x.role==='user'?'user':'model',parts:[{text:x.content}]})),generationConfig:Object.assign({maxOutputTokens:400,temperature:0.9},think?{thinkingConfig:{thinkingBudget:0}}:{})})});
+    body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:msgs.map(x=>({role:x.role==='user'?'user':'model',parts:[{text:x.content}]})),generationConfig:Object.assign({maxOutputTokens:4096,temperature:0.9},think?{thinkingConfig:{thinkingBudget:0}}:{})})});
    res=await call(m,false);
    for(let i=0;i<2&&[429,500,503].includes(res.status);i++){await new Promise(r=>setTimeout(r,800*(i+1)));res=await call(m,false)}
    if([429,500,503].includes(res.status)){for(const fb of ['gemini-3.8-flash-lite','gemini-flash-latest','gemini-flash-lite-latest'].filter(x=>x!==m)){const r2=await call(fb,false);if(r2.ok){res=r2;break}}}
