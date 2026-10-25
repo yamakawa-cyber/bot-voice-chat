@@ -13,12 +13,16 @@ const LLM={
   if(p==='gemini'){let m=cfg.model||localStorage.vc_gem_auto||this.defaults.gemini;
    const call=(m,think)=>fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:streamGenerateContent?alt=sse`,{method:'POST',signal,
     headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},
-    body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:msgs.map(x=>({role:x.role==='user'?'user':'model',parts:[{text:x.content}]})),generationConfig:Object.assign({maxOutputTokens:4096,temperature:0.9},think?{thinkingConfig:{thinkingBudget:0}}:{})})});
+    body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:msgs.filter(x=>x.content&&x.content.trim()).map(x=>({role:x.role==='user'?'user':'model',parts:[{text:x.content}]})),generationConfig:Object.assign({maxOutputTokens:4096,temperature:0.9},think?{thinkingConfig:{thinkingBudget:0}}:{})})});
    res=await call(m,false);
    for(let i=0;i<2&&[429,500,503].includes(res.status);i++){await new Promise(r=>setTimeout(r,800*(i+1)));res=await call(m,false)}
    if([429,500,503].includes(res.status)){for(const fb of ['gemini-3.8-flash-lite','gemini-flash-latest','gemini-flash-lite-latest'].filter(x=>x!==m)){const r2=await call(fb,false);if(r2.ok){res=r2;break}}}
    if(res.status===404){const nm=await this.pickGemini(cfg.key);if(nm){m=nm;localStorage.vc_gem_auto=nm;res=await call(m,false)}}
-   await this.chk(res);for await(const j of this.sse(res)){const t=j.candidates?.[0]?.content?.parts?.filter(x=>!x.thought).map(x=>x.text||'').join('');if(t)onDelta(t)}
+   await this.chk(res);let got=false,last=null;for await(const j of this.sse(res)){last=j;const t=j.candidates?.[0]?.content?.parts?.filter(x=>!x.thought).map(x=>x.text||'').join('');if(t){got=true;onDelta(t)}}
+   if(!got){const r3=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`,{method:'POST',signal,headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},
+     body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:msgs.filter(x=>x.content&&x.content.trim()).map(x=>({role:x.role==='user'?'user':'model',parts:[{text:x.content}]})),generationConfig:{maxOutputTokens:4096,temperature:0.9}})});
+    await this.chk(r3);const j=await r3.json();const t=(j.candidates?.[0]?.content?.parts||[]).filter(x=>!x.thought).map(x=>x.text||'').join('');
+    if(t)onDelta(t);else throw new Error('AIの返事が空でした（'+m+' / '+(j.candidates?.[0]?.finishReason||j.promptFeedback?.blockReason||'理由不明')+'）。この文字をみらいちゃんに送ってください：'+JSON.stringify(j).slice(0,300))}
   }else{const base=(p==='custom'?cfg.base:this.bases[p]).replace(/\/$/,'');
    res=await fetch(base+'/chat/completions',{method:'POST',signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
     body:JSON.stringify({model:cfg.model||this.defaults[p],stream:true,max_tokens:300,messages:[{role:'system',content:system},...msgs]})});
