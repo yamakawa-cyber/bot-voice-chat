@@ -14,8 +14,8 @@ const LLM={
    const st=t=>{try{document.getElementById('status').textContent=t}catch(e){}};
    const call=(m,think)=>{st('考え中…（'+m+'）');const c=new AbortController();const tm=setTimeout(()=>c.abort(),25000);signal?.addEventListener('abort',()=>c.abort());return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:streamGenerateContent?alt=sse`,{method:'POST',signal:c.signal,
     headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},
-    body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:msgs.filter(x=>x.content&&x.content.trim()).map(x=>({role:x.role==='user'?'user':'model',parts:[{text:x.content}]})),generationConfig:Object.assign({maxOutputTokens:4096,temperature:0.9},think?{thinkingConfig:{thinkingBudget:0}}:{})})}).then(r=>{clearTimeout(tm);return r},e=>{clearTimeout(tm);if(signal?.aborted)throw e;return {ok:false,status:408,text:async()=>'時間切れ（25秒）',body:null}})};
-   res=await call(m,false);
+    body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:msgs.filter(x=>x.content&&x.content.trim()).map(x=>({role:x.role==='user'?'user':'model',parts:[{text:x.content}]})),generationConfig:Object.assign({maxOutputTokens:4096,temperature:0.9},think?{thinkingConfig:{thinkingLevel:'minimal'}}:{})})}).then(r=>{clearTimeout(tm);return r},e=>{clearTimeout(tm);if(signal?.aborted)throw e;return {ok:false,status:408,text:async()=>'時間切れ（25秒）',body:null}})};
+   res=await call(m,true);if(res.status===400)res=await call(m,false);
    for(let i=0;i<2&&[408,429,500,503].includes(res.status);i++){await new Promise(r=>setTimeout(r,800*(i+1)));res=await call(m,false)}
    if([408,429,500,503].includes(res.status)){for(const fb of ['gemini-3.8-flash-lite','gemini-flash-latest','gemini-flash-lite-latest'].filter(x=>x!==m)){const r2=await call(fb,false);if(r2.ok){res=r2;break}}}
    if(res.status===404){const nm=await this.pickGemini(cfg.key);if(nm){m=nm;localStorage.vc_gem_auto=nm;res=await call(m,false)}}
